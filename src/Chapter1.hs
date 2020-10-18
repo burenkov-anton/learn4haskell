@@ -636,9 +636,9 @@ sumLast2 :: Int -> Int
 sumLast2 n = first + second
   where
     first = lastDigit n
-    second = if n < 10
+    second = if abs n < 10
               then 0
-              else (mod n 100 - first) `div` 10
+              else (mod (abs n) 100 - first) `div` 10
 
 
 {- |
