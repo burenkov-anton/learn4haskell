@@ -1112,6 +1112,82 @@ Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
 
+data KnightActions = KAttack | DrinkHealthPotion | CastASpell deriving (Show, Eq)
+
+data MonsterActions = MAttack | RunAway deriving (Show, Eq)
+
+data Sequence = Ma [MonsterActions] | Ka [KnightActions] deriving (Show, Eq)
+
+{-class Warrior a where
+  fuHealth :: a -> Int
+  fuAttack :: a -> Int
+-}
+
+newtype FighterHealth = FHealth Int deriving (Show, Ord, Eq)
+newtype FighterAttack = FAttack Int deriving (Show)
+newtype FighterDefence = FDefence Int deriving (Show)
+
+data FightUnit = FightUnit
+  {fuHealth :: FighterHealth,
+  fuAttack :: FighterAttack,
+  fuDefence :: FighterDefence,
+  fuActions :: Sequence
+ } deriving (Show)
+
+createKnight :: FighterHealth -> FighterAttack -> FighterDefence -> [KnightActions] -> FightUnit
+createKnight health attack defence actions = FightUnit{fuHealth = health, fuAttack = attack, fuDefence = defence, fuActions = Ka actions}
+
+createMonster :: FighterHealth -> FighterAttack -> [MonsterActions] -> FightUnit
+createMonster health attack actions = FightUnit{fuHealth = health, fuAttack = attack, fuDefence = FDefence 0, fuActions = Ma actions}
+
+rotate :: Int -> [b] -> [b]
+rotate _ [] = []
+rotate n xs
+    |n < 0 = []
+    |otherwise = take (length xs) $ drop n $ cycle xs
+
+rotateActions x = rotate 1 x
+
+battle :: FightUnit -> FightUnit -> String
+battle first second
+  | fuHealth first <= FHealth 0 = show second ++ " wins!"
+  | fuHealth second <= FHealth 0 = show first ++ "wins!"
+  | fuActions first == Ka [] || fuActions first == Ma [] = show first ++ " run away!"
+  | fuActions second == Ka [] || fuActions second == Ma [] = show second ++ " run away!"
+  | otherwise = battle f s
+      where (s, f) = prepareAction first second 
+
+
+hit :: FighterHealth -> FighterDefence -> FighterAttack -> FighterHealth
+hit (FHealth health) (FDefence defence) (FAttack attack) = FHealth (health + defence - attack)
+
+potion :: FighterHealth -> Int -> FighterHealth
+potion (FHealth health) x = FHealth (health + x)
+
+castASpell :: FighterDefence -> Int -> FighterDefence
+castASpell (FDefence defence) x = FDefence (defence + x)
+
+prepareAction :: FightUnit -> FightUnit -> (FightUnit, FightUnit)
+prepareAction FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = d1, fuActions =  Ka act1} FightUnit{fuHealth = h2, fuAttack = a2, fuDefence = d2, fuActions = act2} 
+  | (head act1) == KAttack = (FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = d1, fuActions = Ka (rotateActions act1)}, FightUnit{fuHealth = hit h2 d2 a1, fuAttack = a2, fuDefence = d2, fuActions = act2})
+  | (head act1) == DrinkHealthPotion = (FightUnit{fuHealth = potion h1 5, fuAttack = a1, fuDefence = d1, fuActions = Ka (rotateActions act1)}, FightUnit{fuHealth = h2, fuAttack = a2, fuDefence = d2, fuActions = act2})
+  | (head act1) == CastASpell = (FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = castASpell d1 1, fuActions = Ka (rotateActions act1)}, FightUnit{fuHealth = h2, fuAttack = a2, fuDefence = d2, fuActions = act2})
+
+prepareAction FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = d1, fuActions =  Ma act1} FightUnit{fuHealth = h2, fuAttack = a2, fuDefence = d2, fuActions = act2} 
+  | (head act1) == MAttack = (FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = d1, fuActions = Ma (rotateActions act1)}, FightUnit{fuHealth = hit h2 d2 a1, fuAttack = a2, fuDefence = d2, fuActions = act2})
+  | (head act1) == RunAway = (FightUnit{fuHealth = h1, fuAttack = a1, fuDefence = d1, fuActions = Ma []}, FightUnit{fuHealth = h2, fuAttack = a2, fuDefence = d2, fuActions = act2})
+
+knightActions = [KAttack, DrinkHealthPotion, CastASpell]
+monsterRunActions = [MAttack, RunAway]
+monsterAttackActions = [MAttack]
+
+knight1 = createKnight (FHealth 15) (FAttack 4) (FDefence 4) knightActions
+
+monster1 = createMonster (FHealth 10) (FAttack 8) monsterRunActions
+
+monster2 = createMonster (FHealth 15) (FAttack 8) monsterAttackActions
+
+superMonster = createMonster (FHealth 15) (FAttack 10) monsterAttackActions
 
 {-
 You did it! Now it is time to open pull request with your changes
